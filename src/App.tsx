@@ -11,8 +11,8 @@ import {
   Sliders,
   Sigma,
   Plus,
-  Trash2,
-  BookOpen
+  BookOpen,
+  ListOrdered
 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -28,8 +28,11 @@ import { ExamFooter } from '@/features/exam-header/components/ExamFooter';
 import { SchoolProfileModal } from '@/features/exam-header/components/SchoolProfileModal';
 import { QuestionEditor } from '@/features/editor/components/QuestionEditor';
 import { SampleQuestionsViewer } from '@/features/editor/components/SampleQuestionsViewer';
-import { renderLatex } from '@/lib/katex';
+import { QuestionBuilderStudio } from '@/features/questions/components/QuestionBuilderStudio';
+import { QuestionPaperItem } from '@/features/questions/components/QuestionPaperItem';
+import { computeTotalMarks } from '@/features/questions/utils/numbering';
 import { formatDigits } from '@/lib/arabic-numbers';
+import type { QuestionData } from '@/features/questions/types';
 
 export function App() {
   const { digitStyle } = useSettingsStore();
@@ -37,8 +40,8 @@ export function App() {
   const { 
     headerData, 
     questions,
+    setQuestions,
     addQuestion,
-    removeQuestion,
     updateHeaderData, 
     loadDefaultSchoolProfile, 
     saveExamToDatabase, 
@@ -47,7 +50,7 @@ export function App() {
     lastSavedAt 
   } = useExamStore();
 
-  const [activeTab, setActiveTab] = useState<'paper' | 'editor' | 'samples' | 'overview'>('paper');
+  const [activeTab, setActiveTab] = useState<'paper' | 'builder' | 'editor' | 'samples' | 'overview'>('paper');
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
 
@@ -76,18 +79,21 @@ export function App() {
     setTimeout(() => setSaveToast(false), 3000);
   };
 
-  const handleAddNewQuestion = () => {
+  const handleAddNewQuestionFromEditor = () => {
     if (!draftContent || draftContent === '<p>اكتب نص السؤال هنا...</p>') {
       alert('يرجى كتابة نص السؤال أو إدراج معادلة أولاً');
       return;
     }
     const qIndex = questions.length + 1;
-    addQuestion({
-      title: `السؤال ${formatDigits(qIndex, digitStyle)}`,
-      content: draftContent,
+    const newQ: QuestionData = {
+      id: 'q-' + Date.now(),
+      type: 'essay',
+      prompt: draftContent,
       marks: draftMarks || 20,
       direction: draftDirection,
-    });
+      title: `السؤال ${formatDigits(qIndex, digitStyle)}`,
+    };
+    addQuestion(newQ);
     alert('تمت إضافة السؤال بنجاح إلى ورقة الامتحان!');
     setActiveTab('paper');
   };
@@ -114,13 +120,8 @@ export function App() {
     }
   };
 
-  const parseMathInText = (html: string) => {
-    return html.replace(/\$([^$]+)\$/g, (_, math) => {
-      return renderLatex(math, { displayMode: false });
-    });
-  };
-
-  const totalCalculatedMarks = questions.reduce((sum, q) => sum + (q.marks || 0), 0);
+  const currentTotalMarks = computeTotalMarks(questions);
+  const isMarksMismatch = currentTotalMarks !== headerData.totalMarks;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-cairo">
@@ -139,11 +140,11 @@ export function App() {
                   {headerData.subject || 'اختبار جديد'} ({headerData.grade})
                 </h1>
                 <Badge variant="primary" className="text-[11px]">
-                  المرحلة 2: محرر الرياضيات والرموز العلمية (KaTeX)
+                  المرحلة 3: صانع الأسئلة المتعدد وحساب الدرجات
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                محرر غني • صيغ رياضيات وفيزياء وكيمياء • 30 نموذجاً علمياً • عزل ثنائي الاتجاه (Bidi)
+                7 أنواع أسئلة • ترقيم آلي • إعادة ترتيب وتكرار • رصد حي للدرجات
                 {lastSavedAt ? ` • تم الحفظ: ${new Date(lastSavedAt).toLocaleTimeString('ar-IQ')}` : ''}
               </p>
             </div>
@@ -165,6 +166,18 @@ export function App() {
               </button>
 
               <button
+                onClick={() => setActiveTab('builder')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                  activeTab === 'builder'
+                    ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <ListOrdered className="w-3.5 h-3.5" />
+                <span>منشئ الأسئلة (7 أنواع)</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('editor')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
                   activeTab === 'editor'
@@ -173,7 +186,7 @@ export function App() {
                 }`}
               >
                 <Sigma className="w-3.5 h-3.5" />
-                <span>محرر المعادلات والأسئلة</span>
+                <span>محرر المعادلات</span>
               </button>
 
               <button
@@ -185,7 +198,7 @@ export function App() {
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>نماذج أسئلة جاهزة (30)</span>
+                <span>نماذج جاهزة (30)</span>
               </button>
 
               <button
@@ -255,20 +268,20 @@ export function App() {
         {/* TAB 1: Real WYSIWYG A4 Exam Paper */}
         {activeTab === 'paper' && (
           <div className="flex flex-col items-center">
-            {/* Marks status banner */}
+            {/* Live Marks Counter bar */}
             <div className="no-print w-full max-w-4xl flex items-center justify-between mb-3 px-2 text-xs">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-600 dark:text-slate-400">مجموع درجات الأسئلة الحالية:</span>
-                <span className={`font-extrabold text-sm ${totalCalculatedMarks !== headerData.totalMarks ? 'text-amber-500' : 'text-emerald-500'}`}>
-                  {formatDigits(totalCalculatedMarks, digitStyle)} / {formatDigits(headerData.totalMarks, digitStyle)} درجة
+                <span className="font-bold text-slate-600 dark:text-slate-400">مجموع درجات الورقة:</span>
+                <span className={`font-extrabold text-sm ${isMarksMismatch ? 'text-amber-500' : 'text-emerald-500'}`}>
+                  {formatDigits(currentTotalMarks, digitStyle)} / {formatDigits(headerData.totalMarks, digitStyle)} درجة
                 </span>
-                {totalCalculatedMarks !== headerData.totalMarks && (
+                {isMarksMismatch && (
                   <span className="text-[11px] text-amber-500 font-semibold">
-                    (تنبيه: مجموع درجات الأسئلة يختلف عن الدرجة الكلية للامتحان)
+                    (تنبيه: مجموع درجات الأسئلة يختلف عن المستهدف {formatDigits(headerData.totalMarks, digitStyle)} درجة)
                   </span>
                 )}
               </div>
-              <span className="text-slate-400 text-[11px]">ورقة A4 قياسية جاهزة للطباعة فوراً</span>
+              <span className="text-slate-400 text-[11px]">معاينة ورقة A4 حقيقية مطابقة للطباعة 100%</span>
             </div>
 
             {/* A4 Printable Sheet */}
@@ -286,45 +299,17 @@ export function App() {
                     <div className="text-center py-12 text-slate-400 border border-dashed border-slate-300 rounded-lg no-print">
                       <p className="font-bold mb-1">لا توجد أسئلة مدرجة في الورقة حالياً.</p>
                       <p className="text-xs">
-                        انتقل إلى تبويب &quot;محرر المعادلات والأسئلة&quot; أو &quot;نماذج أسئلة جاهزة&quot; لإضافة الأسئلة.
+                        انتقل إلى تبويب &quot;منشئ الأسئلة&quot; لإضافة أسئلة مقالية، خيارات، فروع، أو مسائل حسابية.
                       </p>
                     </div>
                   ) : (
                     questions.map((q, idx) => (
-                      <div
+                      <QuestionPaperItem
                         key={q.id}
-                        className="relative group border-b border-black/30 pb-4 pt-1 break-inside-avoid"
-                      >
-                        {/* Question Header & Marks */}
-                        <div className="flex items-center justify-between font-bold mb-2">
-                          <span className="text-sm font-extrabold">
-                            س{formatDigits(idx + 1, digitStyle)}:
-                          </span>
-                          <span className="text-xs font-bold text-black">
-                            ({formatDigits(q.marks, digitStyle)} درجات)
-                          </span>
-                        </div>
-
-                        {/* Question Content with MathLive/KaTeX Render */}
-                        <div
-                          dir={q.direction}
-                          className={`text-xs sm:text-sm leading-relaxed text-black ${
-                            q.direction === 'ltr' ? 'text-left font-sans' : 'text-right'
-                          }`}
-                          dangerouslySetInnerHTML={{ __html: parseMathInText(q.content) }}
-                        />
-
-                        {/* Delete Question Action (Hidden in print) */}
-                        <button
-                          type="button"
-                          onClick={() => removeQuestion(q.id)}
-                          className="no-print absolute top-1 end-16 text-rose-500 hover:text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-xs flex items-center gap-1 bg-white/90 rounded shadow-xs"
-                          title="حذف هذا السؤال من الورقة"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>حذف</span>
-                        </button>
-                      </div>
+                        question={q}
+                        index={idx}
+                        digitStyle={digitStyle}
+                      />
                     ))
                   )}
                 </div>
@@ -341,7 +326,19 @@ export function App() {
           </div>
         )}
 
-        {/* TAB 2: Question Editor & MathLive Toolbar */}
+        {/* TAB 2: Question Builder Studio */}
+        {activeTab === 'builder' && (
+          <div className="no-print space-y-4">
+            <QuestionBuilderStudio
+              questions={questions}
+              targetTotalMarks={headerData.totalMarks}
+              digitStyle={digitStyle}
+              onQuestionsChange={setQuestions}
+            />
+          </div>
+        )}
+
+        {/* TAB 3: Question Editor & MathLive Toolbar */}
         {activeTab === 'editor' && (
           <div className="no-print space-y-6">
             <Card>
@@ -364,7 +361,7 @@ export function App() {
                       className="w-16 px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-center font-bold"
                     />
                   </label>
-                  <Button variant="primary" size="sm" onClick={handleAddNewQuestion}>
+                  <Button variant="primary" size="sm" onClick={handleAddNewQuestionFromEditor}>
                     <Plus className="w-4 h-4 me-1.5" />
                     إدراج السؤال في ورقة الامتحان
                   </Button>
@@ -385,7 +382,7 @@ export function App() {
           </div>
         )}
 
-        {/* TAB 3: 30 Sample Curated Questions */}
+        {/* TAB 4: 30 Sample Curated Questions */}
         {activeTab === 'samples' && (
           <div className="no-print space-y-4">
             <div className="p-4 rounded-xl bg-brand-50/50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800/40">
@@ -400,18 +397,21 @@ export function App() {
             <SampleQuestionsViewer
               digitStyle={digitStyle}
               onInsertQuestion={(q) => {
-                addQuestion({
-                  title: q.title,
-                  content: q.content,
+                const newQ: QuestionData = {
+                  id: 'q-' + Date.now() + '-' + q.id,
+                  type: 'essay',
+                  prompt: q.content,
                   marks: q.marks,
                   direction: q.direction,
-                });
+                  title: q.title,
+                };
+                addQuestion(newQ);
               }}
             />
           </div>
         )}
 
-        {/* TAB 4: Header & Institutional Settings */}
+        {/* TAB 5: Header & Institutional Settings */}
         {activeTab === 'overview' && (
           <div className="no-print space-y-6">
             <ExamHeaderEditor

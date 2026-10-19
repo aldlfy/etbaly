@@ -1,28 +1,22 @@
 import { create } from 'zustand';
 import type { ExamHeaderData } from '@/features/exam-header/types';
 import { DEFAULT_EXAM_HEADER } from '@/features/exam-header/types';
+import type { QuestionData } from '@/features/questions/types';
 import { db } from '@/db';
-
-export interface ExamQuestionItem {
-  id: string;
-  title: string;
-  content: string;
-  marks: number;
-  direction: 'rtl' | 'ltr';
-}
 
 interface ExamState {
   examId: string;
   headerData: ExamHeaderData;
-  questions: ExamQuestionItem[];
+  questions: QuestionData[];
   isSaving: boolean;
   lastSavedAt: number | null;
 
   // Actions
   updateHeaderData: (updated: Partial<ExamHeaderData>) => void;
-  addQuestion: (question: Omit<ExamQuestionItem, 'id'> & { id?: string }) => void;
+  setQuestions: (questions: QuestionData[]) => void;
+  addQuestion: (question: QuestionData) => void;
   removeQuestion: (id: string) => void;
-  updateQuestion: (id: string, updated: Partial<ExamQuestionItem>) => void;
+  updateQuestion: (id: string, updated: Partial<QuestionData>) => void;
   clearQuestions: () => void;
   loadDefaultSchoolProfile: () => Promise<void>;
   saveExamToDatabase: () => Promise<void>;
@@ -35,21 +29,50 @@ export const useExamStore = create<ExamState>((set, get) => ({
   questions: [
     {
       id: 'default-q1',
-      title: 'السؤال الأول',
-      content: `أجب عما يأتي:
-<br/>(أ) جد مجموعة حل المعادلة في $\\mathbb{R}$: $\\frac{x^2 - 4}{x - 2} = 5$
-<br/>(ب) احسب الغاية: $\\lim_{x \\to 0} \\frac{\\sin(3x)}{x}$`,
+      type: 'multi_part',
+      prompt: 'أجب عن الفرعين الآتيين:',
       marks: 20,
       direction: 'rtl',
+      isCollapsed: false,
+      parts: [
+        {
+          id: 'p1',
+          letter: 'أ',
+          content: 'جد مجموعة حل المعادلة التربيعية في $\\mathbb{R}$: $2x^2 - 4x - 6 = 0$ باستخدام الدستور.',
+          marks: 10,
+        },
+        {
+          id: 'p2',
+          letter: 'ب',
+          content: 'احسب الغاية الآتية: $\\lim_{x \\to 0} \\frac{\\sin(5x)}{\\tan(2x)}$ مع بيان خطوات الحل.',
+          marks: 10,
+        },
+      ],
     },
     {
       id: 'default-q2',
-      title: 'السؤال الثاني',
-      content: `تؤثر قوة أفقية $\\vec{F} = 50\\text{ N}$ في جسم كتلته $m = 10\\text{ kg}$ موضوع على سطح أفقي أملس.
-<br/>1- احسب تسارع الجسم $\\vec{a}$ بوحدة $\\text{m/s}^2$ بتطبيق $\\vec{F} = m \\vec{a}$.
-<br/>2- جد الشغل المنجز $W = F \\cdot d$ خلال إزاحة قدرها $d = 5\\text{ m}$.`,
+      type: 'calculation',
+      prompt: 'تؤثر قوة أفقية $\\vec{F} = 40\\text{ N}$ في جسم كتلته $m = 8\\text{ kg}$ موضوع على سطح أملس. احسب تسارع الجسم $\\vec{a}$ بوحدة $\\text{m/s}^2$ والشغل المنجز $W$ خلال إزاحة $d = 5\\text{ m}$:',
       marks: 20,
       direction: 'rtl',
+      isCollapsed: false,
+      answerSpaceType: 'dotted_lines',
+      answerSpaceLines: 5,
+    },
+    {
+      id: 'default-q3',
+      type: 'mcq',
+      prompt: 'اختر الإجابة الصحيحة من بين الأقواس لما يأتي:',
+      marks: 20,
+      direction: 'rtl',
+      isCollapsed: false,
+      mcqLayout: 'horizontal',
+      mcqOptions: [
+        { id: 'opt1', letter: 'أ', text: '$R_{\\text{eq}} = R_1 + R_2$' },
+        { id: 'opt2', letter: 'ب', text: '$\\frac{1}{R_{\\text{eq}}} = \\frac{1}{R_1} + \\frac{1}{R_2}$' },
+        { id: 'opt3', letter: 'ج', text: '$R_{\\text{eq}} = R_1 \\cdot R_2$' },
+        { id: 'opt4', letter: 'د', text: '$R_{\\text{eq}} = \\sqrt{R_1^2 + R_2^2}$' },
+      ],
     },
   ],
   isSaving: false,
@@ -61,16 +84,13 @@ export const useExamStore = create<ExamState>((set, get) => ({
     }));
   },
 
+  setQuestions: (questions) => {
+    set({ questions });
+  },
+
   addQuestion: (q) => {
-    const newQuestion: ExamQuestionItem = {
-      id: q.id || 'q-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-      title: q.title,
-      content: q.content,
-      marks: q.marks || 10,
-      direction: q.direction || 'rtl',
-    };
     set((state) => ({
-      questions: [...state.questions, newQuestion],
+      questions: [...state.questions, q],
     }));
   },
 
