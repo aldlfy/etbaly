@@ -13,7 +13,8 @@ import {
   Plus, 
   AlignRight, 
   AlignLeft,
-  SeparatorHorizontal
+  SeparatorHorizontal,
+  BookmarkPlus
 } from 'lucide-react';
 
 interface QuestionCardProps {
@@ -25,6 +26,7 @@ interface QuestionCardProps {
   onMoveDown: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onSaveToBank?: (question: QuestionData) => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
 }
@@ -38,6 +40,7 @@ export function QuestionCard({
   onMoveDown,
   onDuplicate,
   onDelete,
+  onSaveToBank,
   canMoveUp,
   canMoveDown,
 }: QuestionCardProps) {
@@ -193,6 +196,20 @@ export function QuestionCard({
           >
             <Copy className="w-4 h-4" />
           </Button>
+
+          {/* Save to Bank */}
+          {onSaveToBank && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onSaveToBank(question)}
+              className="p-1 text-brand-600 hover:text-brand-700"
+              title="حفظ في بنك الأسئلة المحلي"
+            >
+              <BookmarkPlus className="w-4 h-4" />
+            </Button>
+          )}
 
           {/* Delete */}
           <Button

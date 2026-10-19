@@ -1,3 +1,5 @@
+import type { QuestionData } from '@/features/questions/types';
+
 export interface SchoolProfile {
   id: string;
   ministry: string;             // e.g. "جمهورية العراق - وزارة التربية"
@@ -53,6 +55,7 @@ export interface Exam {
   pageSettings: ExamPageSettings;
   schoolProfileId?: string;
   questionIds: string[];
+  questions?: QuestionData[];
   createdAt: number;
   updatedAt: number;
 }
@@ -64,9 +67,10 @@ export interface QuestionBankItem {
   chapter?: string;
   difficulty: 'easy' | 'medium' | 'hard';
   type: string;
-  content: string; // Tiptap JSON or HTML
+  content: string; // text or prompt
   marks: number;
   tags: string[];
+  questionData?: QuestionData;
   createdAt: number;
   updatedAt: number;
 }

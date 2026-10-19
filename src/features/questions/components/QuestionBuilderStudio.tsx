@@ -24,6 +24,7 @@ interface QuestionBuilderStudioProps {
   targetTotalMarks: number;
   digitStyle?: 'eastern' | 'western';
   onQuestionsChange: (questions: QuestionData[]) => void;
+  onSaveToBank?: (question: QuestionData) => void;
 }
 
 export function QuestionBuilderStudio({
@@ -31,6 +32,7 @@ export function QuestionBuilderStudio({
   targetTotalMarks,
   digitStyle = 'eastern',
   onQuestionsChange,
+  onSaveToBank,
 }: QuestionBuilderStudioProps) {
   const currentTotal = computeTotalMarks(questions);
   const isMarksMismatch = currentTotal !== targetTotalMarks;
@@ -224,6 +226,7 @@ export function QuestionBuilderStudio({
               onMoveDown={() => handleMove(idx, 'down')}
               onDuplicate={() => handleDuplicate(q.id)}
               onDelete={() => handleDelete(q.id)}
+              onSaveToBank={onSaveToBank}
               canMoveUp={idx > 0}
               canMoveDown={idx < questions.length - 1}
             />

@@ -30,3 +30,14 @@ export function renderLatex(latex: string, options: RenderMathOptions = {}): str
     return `<span class="katex-error text-rose-500 font-mono text-xs" dir="ltr">${latex}</span>`;
   }
 }
+
+/**
+ * Replaces $math$ LaTeX delimiters in HTML/text with rendered KaTeX spans
+ */
+export function renderMathInText(html: string): string {
+  if (!html) return '';
+  return html.replace(/\$([^$]+)\$/g, (_, math) => {
+    return renderLatex(math, { displayMode: false });
+  });
+}
+

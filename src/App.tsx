@@ -12,7 +12,11 @@ import {
   Sigma,
   Plus,
   BookOpen,
-  ListOrdered
+  ListOrdered,
+  FolderOpen,
+  Database,
+  CheckSquare,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -32,6 +36,14 @@ import { formatDigits } from '@/lib/arabic-numbers';
 import type { QuestionData } from '@/features/questions/types';
 import { LayoutControls } from '@/features/layout/components/LayoutControls';
 import { MultiPageExamPreview } from '@/features/layout/components/MultiPageExamPreview';
+import { ExamsManagerModal } from '@/features/storage/components/ExamsManagerModal';
+import { QuestionBankModal } from '@/features/question-bank/components/QuestionBankModal';
+import { SaveToBankModal } from '@/features/question-bank/components/SaveToBankModal';
+import { AnswerKeyView } from '@/features/answer-key/components/AnswerKeyView';
+import { BubbleSheetView } from '@/features/bubble-sheet/components/BubbleSheetView';
+import { VariantSelector } from '@/features/exam-variants/components/VariantSelector';
+import { generateVariantQuestions } from '@/features/exam-variants/utils/shuffler';
+import { useAutosaveExam } from '@/features/storage/hooks/useAutosaveExam';
 
 export function App() {
   const { digitStyle } = useSettingsStore();
@@ -41,6 +53,8 @@ export function App() {
     questions,
     pageSettings,
     updatePageSettings,
+    activeVariant,
+    setActiveVariant,
     setQuestions,
     addQuestion,
     updateHeaderData, 
@@ -51,8 +65,13 @@ export function App() {
     lastSavedAt 
   } = useExamStore();
 
-  const [activeTab, setActiveTab] = useState<'paper' | 'builder' | 'editor' | 'samples' | 'overview'>('paper');
+  useAutosaveExam(2500);
+
+  const [activeTab, setActiveTab] = useState<'paper' | 'builder' | 'answer_key' | 'bubble_sheet' | 'editor' | 'samples' | 'overview'>('paper');
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
+  const [isExamsModalOpen, setIsExamsModalOpen] = useState(false);
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [questionToSaveToBank, setQuestionToSaveToBank] = useState<QuestionData | null>(null);
   const [saveToast, setSaveToast] = useState(false);
 
   // Editor draft state
@@ -121,7 +140,11 @@ export function App() {
     }
   };
 
-  const currentTotalMarks = computeTotalMarks(questions);
+  const activeQuestions = activeVariant === 'original'
+    ? questions
+    : generateVariantQuestions(questions, activeVariant);
+
+  const currentTotalMarks = computeTotalMarks(activeQuestions);
   const isMarksMismatch = currentTotalMarks !== headerData.totalMarks;
 
   return (
@@ -141,11 +164,11 @@ export function App() {
                   {headerData.subject || 'اختبار جديد'} ({headerData.grade})
                 </h1>
                 <Badge variant="primary" className="text-[11px]">
-                  المرحلة 4: محرك التخطيط وتوزيع الصفحات والطباعة
+                  المرحلة 5: التخزين وبنك الأسئلة وسلالم التصحيح
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                A4/A3/Letter • عمودان/عمود • هوامش وخطوط • ملاءمة ذكية (Fit to 1/2 Pages) • طباعة فورية
+                حفظ تلقائي IndexedDB • بنك أسئلة محلي • تصدير JSON • نماذج أ/ب • سلم تصحيح وبابل شيت
                 {lastSavedAt ? ` • تم الحفظ: ${new Date(lastSavedAt).toLocaleTimeString('ar-IQ')}` : ''}
               </p>
             </div>
@@ -153,34 +176,58 @@ export function App() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* View Switcher Tabs */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg overflow-x-auto">
               <button
                 onClick={() => setActiveTab('paper')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'paper'
                     ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
                 <Eye className="w-3.5 h-3.5" />
-                <span>ورقة الامتحان A4 ({questions.length})</span>
+                <span>ورقة الامتحان ({activeQuestions.length})</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('builder')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'builder'
                     ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
                 <ListOrdered className="w-3.5 h-3.5" />
-                <span>منشئ الأسئلة (7 أنواع)</span>
+                <span>منشئ الأسئلة</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('answer_key')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 shrink-0 ${
+                  activeTab === 'answer_key'
+                    ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <CheckSquare className="w-3.5 h-3.5" />
+                <span>سلم التصحيح</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('bubble_sheet')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 shrink-0 ${
+                  activeTab === 'bubble_sheet'
+                    ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>ورقة التظليل (بابل شيت)</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('editor')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'editor'
                     ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400'
@@ -192,28 +239,49 @@ export function App() {
 
               <button
                 onClick={() => setActiveTab('samples')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'samples'
                     ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>نماذج جاهزة (30)</span>
+                <span>نماذج جاهزة</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'overview'
                     ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
                 <Sliders className="w-3.5 h-3.5" />
-                <span>إعدادات الترويسة</span>
+                <span>الترويسة</span>
               </button>
             </div>
+
+            {/* Quick Actions Buttons */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsExamsModalOpen(true)}
+              title="إدارة الاختبارات المحفوظة وتصدير/استيراد JSON"
+            >
+              <FolderOpen className="w-4 h-4 me-1 text-amber-500" />
+              <span>اختباراتي</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBankModalOpen(true)}
+              title="تصفح بنك الأسئلة المحلي وإدراج أسئلة"
+            >
+              <Database className="w-4 h-4 me-1 text-indigo-500" />
+              <span>بنك الأسئلة</span>
+            </Button>
 
             <Button
               variant="outline"
@@ -230,7 +298,7 @@ export function App() {
               size="sm"
               onClick={handleSaveExam}
               isLoading={isSaving}
-              title="حفظ الاختبار محلياً في IndexedDB"
+              title="حفظ يدوي فوري للاختبار"
             >
               <Save className="w-4 h-4 me-1 text-emerald-500" />
               <span>حفظ</span>
@@ -243,7 +311,7 @@ export function App() {
               title="طباعة ورقة الامتحان أو حفظها PDF"
             >
               <Printer className="w-4 h-4 me-1" />
-              <span>طباعة A4</span>
+              <span>طباعة</span>
             </Button>
 
             <Button
@@ -269,9 +337,9 @@ export function App() {
         {/* TAB 1: Real WYSIWYG Multipage Exam Paper with Layout Controls */}
         {activeTab === 'paper' && (
           <div className="flex flex-col items-center space-y-6">
-            {/* Live Marks Counter bar */}
+            {/* Live Marks Counter and Variant Bar */}
             <div className="no-print w-full max-w-5xl flex flex-wrap items-center justify-between gap-3 px-2 text-xs">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span className="font-bold text-slate-600 dark:text-slate-400">مجموع درجات الورقة:</span>
                 <span className={`font-extrabold text-sm ${isMarksMismatch ? 'text-amber-500' : 'text-emerald-500'}`}>
                   {formatDigits(currentTotalMarks, digitStyle)} / {formatDigits(headerData.totalMarks, digitStyle)} درجة
@@ -282,14 +350,21 @@ export function App() {
                   </span>
                 )}
               </div>
-              <span className="text-slate-400 text-[11px]">معاينة حقيقية مطابقة للطباعة بنسبة 100% مع تحكم بالتوزيع والهوامش</span>
+
+              {/* Variant Selector (Original / Model A / Model B) */}
+              <div className="flex items-center gap-2">
+                <VariantSelector
+                  activeVariant={activeVariant}
+                  onChangeVariant={setActiveVariant}
+                />
+              </div>
             </div>
 
             {/* Layout Controls Bar (no-print) */}
             <div className="no-print w-full max-w-5xl">
               <LayoutControls
                 settings={pageSettings}
-                questions={questions}
+                questions={activeQuestions}
                 header={headerData}
                 onUpdateSettings={updatePageSettings}
                 onPrint={handlePrint}
@@ -299,7 +374,7 @@ export function App() {
             {/* Multipage Printable Sheets */}
             <div className="print-area w-full max-w-5xl flex justify-center">
               <MultiPageExamPreview
-                questions={questions}
+                questions={activeQuestions}
                 header={headerData}
                 settings={pageSettings}
               />
@@ -315,6 +390,43 @@ export function App() {
               targetTotalMarks={headerData.totalMarks}
               digitStyle={digitStyle}
               onQuestionsChange={setQuestions}
+              onSaveToBank={(q) => setQuestionToSaveToBank(q)}
+            />
+          </div>
+        )}
+
+        {/* TAB: Official Answer Key & Marking Scheme */}
+        {activeTab === 'answer_key' && (
+          <div className="flex flex-col items-center space-y-4">
+            <div className="no-print w-full max-w-4xl flex items-center justify-end">
+              <VariantSelector
+                activeVariant={activeVariant}
+                onChangeVariant={setActiveVariant}
+              />
+            </div>
+            <AnswerKeyView
+              questions={activeQuestions}
+              header={headerData}
+              digitStyle={digitStyle}
+              variantLabel={activeVariant === 'model_b' ? 'نموذج (ب)' : activeVariant === 'model_a' ? 'نموذج (أ)' : undefined}
+            />
+          </div>
+        )}
+
+        {/* TAB: Bubble Answer Sheet */}
+        {activeTab === 'bubble_sheet' && (
+          <div className="flex flex-col items-center space-y-4">
+            <div className="no-print w-full max-w-4xl flex items-center justify-end">
+              <VariantSelector
+                activeVariant={activeVariant}
+                onChangeVariant={setActiveVariant}
+              />
+            </div>
+            <BubbleSheetView
+              header={headerData}
+              questionCount={questions.length > 0 ? questions.length : 30}
+              digitStyle={digitStyle}
+              variantLabel={activeVariant === 'model_b' ? 'نموذج (ب)' : 'نموذج (أ)'}
             />
           </div>
         )}
@@ -464,6 +576,33 @@ export function App() {
           });
         }}
       />
+
+      {/* Exams Storage Manager Modal */}
+      <ExamsManagerModal
+        isOpen={isExamsModalOpen}
+        onClose={() => setIsExamsModalOpen(false)}
+        digitStyle={digitStyle}
+      />
+
+      {/* Local Question Bank Modal */}
+      <QuestionBankModal
+        isOpen={isBankModalOpen}
+        onClose={() => setIsBankModalOpen(false)}
+        onInsertQuestion={addQuestion}
+        digitStyle={digitStyle}
+      />
+
+      {/* Save to Bank Modal */}
+      {questionToSaveToBank && (
+        <SaveToBankModal
+          isOpen={true}
+          question={questionToSaveToBank}
+          defaultSubject={headerData.subject}
+          defaultGrade={headerData.grade}
+          onClose={() => setQuestionToSaveToBank(null)}
+          onSaved={() => alert('تم حفظ السؤال بنجاح في بنك الأسئلة المحلي!')}
+        />
+      )}
     </div>
   );
 }

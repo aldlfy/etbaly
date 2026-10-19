@@ -5,6 +5,7 @@ import type { QuestionData } from '@/features/questions/types';
 import type { ExamPageSettings } from '@/features/layout/types';
 import { DEFAULT_PAGE_SETTINGS } from '@/features/layout/types';
 import { db } from '@/db';
+import type { Exam } from '@/db/models';
 
 interface ExamState {
   examId: string;
@@ -13,10 +14,13 @@ interface ExamState {
   pageSettings: ExamPageSettings;
   isSaving: boolean;
   lastSavedAt: number | null;
+  activeVariant: 'original' | 'model_a' | 'model_b';
 
   // Actions
   updateHeaderData: (updated: Partial<ExamHeaderData>) => void;
   updatePageSettings: (updated: Partial<ExamPageSettings>) => void;
+  setActiveVariant: (variant: 'original' | 'model_a' | 'model_b') => void;
+  loadExamFromRecord: (exam: Exam) => void;
   setQuestions: (questions: QuestionData[]) => void;
   addQuestion: (question: QuestionData) => void;
   removeQuestion: (id: string) => void;
@@ -82,6 +86,7 @@ export const useExamStore = create<ExamState>((set, get) => ({
   pageSettings: DEFAULT_PAGE_SETTINGS,
   isSaving: false,
   lastSavedAt: null,
+  activeVariant: 'original',
 
   updateHeaderData: (updated) => {
     set((state) => ({
@@ -93,6 +98,30 @@ export const useExamStore = create<ExamState>((set, get) => ({
     set((state) => ({
       pageSettings: { ...state.pageSettings, ...updated },
     }));
+  },
+
+  setActiveVariant: (activeVariant) => {
+    set({ activeVariant });
+  },
+
+  loadExamFromRecord: (exam) => {
+    set({
+      examId: exam.id,
+      headerData: {
+        ...DEFAULT_EXAM_HEADER,
+        ...(exam.metadata || {}),
+        instructions: Array.isArray(exam.metadata?.instructions)
+          ? exam.metadata.instructions[0] || ''
+          : exam.metadata?.instructions || '',
+      },
+      pageSettings: {
+        ...DEFAULT_PAGE_SETTINGS,
+        ...(exam.pageSettings || {}),
+      },
+      questions: exam.questions || [],
+      lastSavedAt: exam.updatedAt || exam.createdAt || Date.now(),
+      activeVariant: 'original',
+    });
   },
 
   setQuestions: (questions) => {
@@ -187,6 +216,7 @@ export const useExamStore = create<ExamState>((set, get) => ({
           digitStyle: get().pageSettings.digitStyle,
         },
         questionIds: questions.map((q) => q.id),
+        questions,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
