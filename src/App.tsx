@@ -16,7 +16,8 @@ import {
   FolderOpen,
   Database,
   CheckSquare,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Sparkles
 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -45,6 +46,7 @@ import { VariantSelector } from '@/features/exam-variants/components/VariantSele
 import { generateVariantQuestions } from '@/features/exam-variants/utils/shuffler';
 import { useAutosaveExam } from '@/features/storage/hooks/useAutosaveExam';
 import { AccountSubscriptionModal } from '@/features/subscription/components/AccountSubscriptionModal';
+import { AIAssistantModal } from '@/features/ai-assistant/components/AIAssistantModal';
 
 export function App() {
   const { digitStyle } = useSettingsStore();
@@ -73,6 +75,7 @@ export function App() {
   const [isExamsModalOpen, setIsExamsModalOpen] = useState(false);
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [questionToSaveToBank, setQuestionToSaveToBank] = useState<QuestionData | null>(null);
   const [saveToast, setSaveToast] = useState(false);
 
@@ -293,6 +296,17 @@ export function App() {
             >
               <School className="w-4 h-4 me-1 text-brand-500" />
               <span>المدرسة</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAiModalOpen(true)}
+              title="توليد أسئلة بالذكاء الاصطناعي مع معادلات وسلم درجات"
+              className="border-purple-300 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+            >
+              <Sparkles className="w-4 h-4 me-1 text-purple-500" />
+              <span>المساعد الذكي (AI)</span>
             </Button>
 
             <Button
@@ -620,6 +634,17 @@ export function App() {
       <AccountSubscriptionModal
         isOpen={isSubModalOpen}
         onClose={() => setIsSubModalOpen(false)}
+        digitStyle={digitStyle}
+      />
+
+      {/* AI Assistant Question Studio Modal */}
+      <AIAssistantModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        defaultSubject={headerData.subject}
+        defaultGrade={headerData.grade}
+        onInsertQuestion={addQuestion}
+        onOpenSubscriptionModal={() => setIsSubModalOpen(true)}
         digitStyle={digitStyle}
       />
     </div>

@@ -1,0 +1,10 @@
+name = "examforge-ai-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+[vars]
+SUPABASE_URL = "https://jyqforlynzkxltzusekl.supabase.co"
+AI_PROVIDER = "gemini" # or "deepseek"
+# Secrets to set via wrangler secret put:
+# GEMINI_API_KEY
+# SUPABASE_ANON_KEY
