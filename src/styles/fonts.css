@@ -1,0 +1,26 @@
+/* Self-hosted & system font stacks */
+@layer base {
+  :root {
+    --font-cairo: 'Cairo', system-ui, -apple-system, sans-serif;
+    --font-amiri: 'Amiri', 'Traditional Arabic', serif;
+    --font-tajawal: 'Tajawal', sans-serif;
+    --font-noto: 'Noto Naskh Arabic', serif;
+    --font-latin: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.font-cairo {
+  font-family: var(--font-cairo);
+}
+
+.font-amiri {
+  font-family: var(--font-amiri);
+}
+
+.font-tajawal {
+  font-family: var(--font-tajawal);
+}
+
+.font-noto {
+  font-family: var(--font-noto);
+}

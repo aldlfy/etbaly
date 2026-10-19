@@ -1,0 +1,28 @@
+{
+  "name": "ExamForge - صانع الاختبارات المدرسية",
+  "short_name": "ExamForge",
+  "description": "تطبيق ويب متقدم للمعلمين لإعداد وطباعة أسئلة الامتحانات باللغة العربية مع دعم المعادلات الرياضية والعلمية",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0e8ce6",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"]
+}

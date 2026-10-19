@@ -1,0 +1,68 @@
+{
+  "app": {
+    "title": "ExamForge",
+    "subtitle": "Arabic Exam Composer",
+    "description": "Professional open-source platform for school teachers to compose and print exam papers in Arabic with advanced math, physics, and chemistry notation."
+  },
+  "nav": {
+    "editor": "Question Editor",
+    "exams": "My Exams",
+    "questionBank": "Question Bank",
+    "schoolProfile": "School Profile",
+    "subscription": "Subscription",
+    "admin": "Admin Dashboard",
+    "login": "Sign In",
+    "logout": "Sign Out"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "preview": "Preview",
+    "print": "Print",
+    "export": "Export",
+    "loading": "Loading...",
+    "offline": "Offline Mode (running locally)",
+    "online": "Connected",
+    "easternDigits": "Eastern Numerals (١٢٣)",
+    "westernDigits": "Western Numerals (123)",
+    "darkTheme": "Dark Theme",
+    "lightTheme": "Light Theme",
+    "language": "Language",
+    "arabic": "العربية",
+    "english": "English"
+  },
+  "subscription": {
+    "plan": "Current Plan",
+    "free": "Free",
+    "pro": "Pro",
+    "school": "School License",
+    "lifetime": "Lifetime",
+    "status": "Subscription Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "daysRemaining": "Days remaining: {{count}}",
+    "redeemTitle": "Redeem Activation Code",
+    "redeemDesc": "Enter your 12-character activation code issued by administrator to unlock pro features.",
+    "codePlaceholder": "XXXX-XXXX-XXXX",
+    "redeemButton": "Redeem Code",
+    "redeemSuccess": "Subscription activated successfully!",
+    "benefitsTitle": "Pro Tier Benefits:",
+    "benefit1": "Complete removal of watermark from all exports",
+    "benefit2": "Word export (.docx) with mathematical notation preserved",
+    "benefit3": "A/B version generation with shuffled questions",
+    "benefit4": "Automated bubble sheets and answer keys",
+    "benefit5": "Cloud question bank and AI assistant"
+  },
+  "phase0": {
+    "statusBanner": "Phase 0: Core foundation built, offline-ready with encrypted Supabase backend",
+    "featuresTitle": "Active Core Features:",
+    "feat1": "Native Arabic first UI with complete RTL support",
+    "feat2": "Secure local client storage via IndexedDB (Dexie)",
+    "feat3": "Dark and Light themes with persistent preference",
+    "feat4": "Secure Supabase backend (Strict RLS & SHA-256 hashed codes)",
+    "feat5": "PWA support for offline school desktop use",
+    "startExamBtn": "Start New Exam"
+  }
+}
