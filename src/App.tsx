@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { 
-  Sparkles, 
   Printer, 
   Save, 
   RotateCcw, 
@@ -9,7 +8,11 @@ import {
   CheckCircle2, 
   KeyRound,
   Eye,
-  Sliders
+  Sliders,
+  Sigma,
+  Plus,
+  Trash2,
+  BookOpen
 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -23,6 +26,9 @@ import { ExamHeaderEditor } from '@/features/exam-header/components/ExamHeaderEd
 import { ExamHeaderPreview } from '@/features/exam-header/components/ExamHeaderPreview';
 import { ExamFooter } from '@/features/exam-header/components/ExamFooter';
 import { SchoolProfileModal } from '@/features/exam-header/components/SchoolProfileModal';
+import { QuestionEditor } from '@/features/editor/components/QuestionEditor';
+import { SampleQuestionsViewer } from '@/features/editor/components/SampleQuestionsViewer';
+import { renderLatex } from '@/lib/katex';
 import { formatDigits } from '@/lib/arabic-numbers';
 
 export function App() {
@@ -30,6 +36,9 @@ export function App() {
   const { entitlement, initAuth, redeemCode } = useAuthStore();
   const { 
     headerData, 
+    questions,
+    addQuestion,
+    removeQuestion,
     updateHeaderData, 
     loadDefaultSchoolProfile, 
     saveExamToDatabase, 
@@ -38,9 +47,14 @@ export function App() {
     lastSavedAt 
   } = useExamStore();
 
-  const [activeTab, setActiveTab] = useState<'editor' | 'overview'>('editor');
+  const [activeTab, setActiveTab] = useState<'paper' | 'editor' | 'samples' | 'overview'>('paper');
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
+
+  // Editor draft state
+  const [draftContent, setDraftContent] = useState<string>('');
+  const [draftDirection, setDraftDirection] = useState<'rtl' | 'ltr'>('rtl');
+  const [draftMarks, setDraftMarks] = useState<number>(20);
 
   // Supabase Code Redemption state
   const [inputCode, setInputCode] = useState('');
@@ -60,6 +74,22 @@ export function App() {
     await saveExamToDatabase();
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 3000);
+  };
+
+  const handleAddNewQuestion = () => {
+    if (!draftContent || draftContent === '<p>اكتب نص السؤال هنا...</p>') {
+      alert('يرجى كتابة نص السؤال أو إدراج معادلة أولاً');
+      return;
+    }
+    const qIndex = questions.length + 1;
+    addQuestion({
+      title: `السؤال ${formatDigits(qIndex, digitStyle)}`,
+      content: draftContent,
+      marks: draftMarks || 20,
+      direction: draftDirection,
+    });
+    alert('تمت إضافة السؤال بنجاح إلى ورقة الامتحان!');
+    setActiveTab('paper');
   };
 
   const handleRedeem = async (e: React.FormEvent) => {
@@ -84,8 +114,16 @@ export function App() {
     }
   };
 
+  const parseMathInText = (html: string) => {
+    return html.replace(/\$([^$]+)\$/g, (_, math) => {
+      return renderLatex(math, { displayMode: false });
+    });
+  };
+
+  const totalCalculatedMarks = questions.reduce((sum, q) => sum + (q.marks || 0), 0);
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-cairo">
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -101,18 +139,31 @@ export function App() {
                   {headerData.subject || 'اختبار جديد'} ({headerData.grade})
                 </h1>
                 <Badge variant="primary" className="text-[11px]">
-                  المرحلة 1: ترويسة وبيانات الامتحان
+                  المرحلة 2: محرر الرياضيات والرموز العلمية (KaTeX)
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                طراز وزاري عراقي معتمد • حفظ دائم في IndexedDB • معاينة مطابقة 100% للطباعة
+                محرر غني • صيغ رياضيات وفيزياء وكيمياء • 30 نموذجاً علمياً • عزل ثنائي الاتجاه (Bidi)
+                {lastSavedAt ? ` • تم الحفظ: ${new Date(lastSavedAt).toLocaleTimeString('ar-IQ')}` : ''}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* View Switcher */}
+            {/* View Switcher Tabs */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+              <button
+                onClick={() => setActiveTab('paper')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                  activeTab === 'paper'
+                    ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>ورقة الامتحان A4 ({questions.length})</span>
+              </button>
+
               <button
                 onClick={() => setActiveTab('editor')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
@@ -121,9 +172,22 @@ export function App() {
                     : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>محرر الترويسة والورقة</span>
+                <Sigma className="w-3.5 h-3.5" />
+                <span>محرر المعادلات والأسئلة</span>
               </button>
+
+              <button
+                onClick={() => setActiveTab('samples')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                  activeTab === 'samples'
+                    ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>نماذج أسئلة جاهزة (30)</span>
+              </button>
+
               <button
                 onClick={() => setActiveTab('overview')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
@@ -132,8 +196,8 @@ export function App() {
                     : 'text-slate-600 dark:text-slate-400'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>البنية التحتية والاشتراك</span>
+                <Sliders className="w-3.5 h-3.5" />
+                <span>إعدادات الترويسة</span>
               </button>
             </div>
 
@@ -165,7 +229,7 @@ export function App() {
               title="طباعة ورقة الامتحان أو حفظها PDF"
             >
               <Printer className="w-4 h-4 me-1" />
-              <span>طباعة ورقة الامتحان</span>
+              <span>طباعة A4</span>
             </Button>
 
             <Button
@@ -184,148 +248,192 @@ export function App() {
         {saveToast && (
           <div className="no-print p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 animate-fade-in">
             <CheckCircle2 className="w-4 h-4" />
-            <span>تم حفظ بيانات الاختبار وترويسته بنجاح في IndexedDB!</span>
+            <span>تم حفظ الاختبار والأسئلة بنجاح في IndexedDB!</span>
           </div>
         )}
 
-        {/* Tab 1: Editor & WYSIWYG A4 Preview */}
-        {activeTab === 'editor' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Editor Sidebar Controls (Hidden on print) */}
-            <div className="no-print lg:col-span-5 space-y-4">
-              <ExamHeaderEditor
-                data={headerData}
-                onChange={updateHeaderData}
-                onOpenSchoolProfile={() => setIsSchoolModalOpen(true)}
-              />
-
-              {lastSavedAt && (
-                <p className="text-[11px] text-slate-400 text-center font-mono">
-                  آخر حفظ محلي: {new Date(lastSavedAt).toLocaleTimeString('ar-IQ')}
-                </p>
-              )}
-            </div>
-
-            {/* A4 Paper Preview Container */}
-            <div className="lg:col-span-7 flex flex-col items-center">
-              <div className="no-print w-full flex items-center justify-between mb-2 px-1 text-xs text-slate-500 font-semibold">
-                <span className="flex items-center gap-1.5">
-                  <Eye className="w-4 h-4 text-brand-500" />
-                  معاينة ورقة الامتحان (A4 حقيقي):
+        {/* TAB 1: Real WYSIWYG A4 Exam Paper */}
+        {activeTab === 'paper' && (
+          <div className="flex flex-col items-center">
+            {/* Marks status banner */}
+            <div className="no-print w-full max-w-4xl flex items-center justify-between mb-3 px-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-600 dark:text-slate-400">مجموع درجات الأسئلة الحالية:</span>
+                <span className={`font-extrabold text-sm ${totalCalculatedMarks !== headerData.totalMarks ? 'text-amber-500' : 'text-emerald-500'}`}>
+                  {formatDigits(totalCalculatedMarks, digitStyle)} / {formatDigits(headerData.totalMarks, digitStyle)} درجة
                 </span>
-                <span>مطابقة 100% للشاشة وأمر الطباعة</span>
+                {totalCalculatedMarks !== headerData.totalMarks && (
+                  <span className="text-[11px] text-amber-500 font-semibold">
+                    (تنبيه: مجموع درجات الأسئلة يختلف عن الدرجة الكلية للامتحان)
+                  </span>
+                )}
               </div>
+              <span className="text-slate-400 text-[11px]">ورقة A4 قياسية جاهزة للطباعة فوراً</span>
+            </div>
 
-              {/* A4 Paper Canvas */}
-              <div
-                className="print-area exam-sheet w-full bg-white text-black rounded-lg shadow-xl border border-slate-300 p-6 sm:p-8 min-h-[842px] flex flex-col justify-between"
-                style={{
-                  fontFamily: 'Cairo, sans-serif',
-                }}
-              >
-                {/* 1. Ministerial Header & Grading Grid */}
-                <div>
-                  <ExamHeaderPreview data={headerData} digitStyle={digitStyle} />
+            {/* A4 Printable Sheet */}
+            <div
+              className="print-area exam-sheet w-full max-w-4xl bg-white text-black rounded-lg shadow-2xl border border-slate-300 p-6 sm:p-10 min-h-[1123px] flex flex-col justify-between"
+              style={{ fontFamily: 'Cairo, sans-serif' }}
+            >
+              {/* Header & Grading Grid */}
+              <div>
+                <ExamHeaderPreview data={headerData} digitStyle={digitStyle} />
 
-                  {/* Sample Questions Body Preview for Phase 1 */}
-                  <div className="mt-8 space-y-6 text-sm">
-                    {/* Q1 Example */}
-                    <div className="border-b border-black/20 pb-4">
-                      <div className="flex items-center justify-between font-bold mb-2">
-                        <span>س{formatDigits(1, digitStyle)}: أجب عما يأتي:</span>
-                        <span className="font-extrabold text-xs">({formatDigits(20, digitStyle)} درجة)</span>
+                {/* Exam Questions Body */}
+                <div className="mt-6 space-y-6 text-sm">
+                  {questions.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 border border-dashed border-slate-300 rounded-lg no-print">
+                      <p className="font-bold mb-1">لا توجد أسئلة مدرجة في الورقة حالياً.</p>
+                      <p className="text-xs">
+                        انتقل إلى تبويب &quot;محرر المعادلات والأسئلة&quot; أو &quot;نماذج أسئلة جاهزة&quot; لإضافة الأسئلة.
+                      </p>
+                    </div>
+                  ) : (
+                    questions.map((q, idx) => (
+                      <div
+                        key={q.id}
+                        className="relative group border-b border-black/30 pb-4 pt-1 break-inside-avoid"
+                      >
+                        {/* Question Header & Marks */}
+                        <div className="flex items-center justify-between font-bold mb-2">
+                          <span className="text-sm font-extrabold">
+                            س{formatDigits(idx + 1, digitStyle)}:
+                          </span>
+                          <span className="text-xs font-bold text-black">
+                            ({formatDigits(q.marks, digitStyle)} درجات)
+                          </span>
+                        </div>
+
+                        {/* Question Content with MathLive/KaTeX Render */}
+                        <div
+                          dir={q.direction}
+                          className={`text-xs sm:text-sm leading-relaxed text-black ${
+                            q.direction === 'ltr' ? 'text-left font-sans' : 'text-right'
+                          }`}
+                          dangerouslySetInnerHTML={{ __html: parseMathInText(q.content) }}
+                        />
+
+                        {/* Delete Question Action (Hidden in print) */}
+                        <button
+                          type="button"
+                          onClick={() => removeQuestion(q.id)}
+                          className="no-print absolute top-1 end-16 text-rose-500 hover:text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-xs flex items-center gap-1 bg-white/90 rounded shadow-xs"
+                          title="حذف هذا السؤال من الورقة"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>حذف</span>
+                        </button>
                       </div>
-                      <p className="text-xs text-slate-700 leading-relaxed ps-4">
-                        (أ) عرّف ما يأتي باختصار واذكر أهم الخصائص الأساسية لكل منها.
-                      </p>
-                      <p className="text-xs text-slate-700 leading-relaxed ps-4 mt-2">
-                        (ب) علّل لما يأتي معززاً إجابتك بالمعادلات الرياضية أو العلمية المناسبة إن وجدت.
-                      </p>
-                    </div>
-
-                    {/* Q2 Example */}
-                    <div className="border-b border-black/20 pb-4">
-                      <div className="flex items-center justify-between font-bold mb-2">
-                        <span>س{formatDigits(2, digitStyle)}: اختر الإجابة الصحيحة من بين الأقواس:</span>
-                        <span className="font-extrabold text-xs">({formatDigits(20, digitStyle)} درجة)</span>
-                      </div>
-                      <p className="text-xs text-slate-700 leading-relaxed ps-4">
-                        ١- تكون محصلة متجهين متعامدين متساويين في المقدار مساوية لـ: [ ٢ | جذر ٢ | صفر ].
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded border border-dashed border-slate-300 text-center text-xs text-slate-400 no-print">
-                      مساحة أسئلة الامتحان (سيتم تفعيل محرر الرياضيات Tiptap + KaTeX وصانع الأسئلة المتعدد في المرحلتين 2 و 3)
-                    </div>
-                  </div>
+                    ))
+                  )}
                 </div>
-
-                {/* 2. Ministerial Footer with Page Numbers & Good Luck note */}
-                <ExamFooter
-                  data={headerData}
-                  currentPage={1}
-                  totalPages={1}
-                  digitStyle={digitStyle}
-                />
               </div>
+
+              {/* Ministerial Footer */}
+              <ExamFooter
+                data={headerData}
+                currentPage={1}
+                totalPages={1}
+                digitStyle={digitStyle}
+              />
             </div>
           </div>
         )}
 
-        {/* Tab 2: Phase 0 Infrastructure & Subscription Tools */}
+        {/* TAB 2: Question Editor & MathLive Toolbar */}
+        {activeTab === 'editor' && (
+          <div className="no-print space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sigma className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+                  <CardTitle className="text-base font-bold">
+                    محرر الأسئلة والرموز الرياضية والعلمية
+                  </CardTitle>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <span>درجة السؤال:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={draftMarks}
+                      onChange={(e) => setDraftMarks(parseInt(e.target.value, 10) || 10)}
+                      className="w-16 px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-center font-bold"
+                    />
+                  </label>
+                  <Button variant="primary" size="sm" onClick={handleAddNewQuestion}>
+                    <Plus className="w-4 h-4 me-1.5" />
+                    إدراج السؤال في ورقة الامتحان
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  استخدم المحرر لكتابة السؤال، واضغط زر &quot;إدراج معادلة / رمز&quot; لفتح لوحة المعادلات المرئية (كسور، جذور، تكاملات، متجهات، معادلات كيميائية).
+                </p>
+
+                <QuestionEditor
+                  direction={draftDirection}
+                  onDirectionChange={setDraftDirection}
+                  onChange={setDraftContent}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* TAB 3: 30 Sample Curated Questions */}
+        {activeTab === 'samples' && (
+          <div className="no-print space-y-4">
+            <div className="p-4 rounded-xl bg-brand-50/50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800/40">
+              <h3 className="text-sm font-bold text-brand-800 dark:text-brand-300 mb-1">
+                بنك النماذج العلمية الجاهزة (30 سؤالاً شاملاً)
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                تصفح النماذج المتخصصة في الجبر، التفاضل والتكامل، الميكانيكا، الدوائر الكهربائية، الكيمياء، واللغة الإنجليزية مع معادلاتها وصيغها المنفذة، واضغط &quot;إدراج في ورقة الامتحان&quot; لنقل أي سؤال فوراً.
+              </p>
+            </div>
+
+            <SampleQuestionsViewer
+              digitStyle={digitStyle}
+              onInsertQuestion={(q) => {
+                addQuestion({
+                  title: q.title,
+                  content: q.content,
+                  marks: q.marks,
+                  direction: q.direction,
+                });
+              }}
+            />
+          </div>
+        )}
+
+        {/* TAB 4: Header & Institutional Settings */}
         {activeTab === 'overview' && (
           <div className="no-print space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">تخزين IndexedDB المحلي</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-xs">
-                  <p className="text-slate-500">
-                    يعمل المحرر محلياً 100%. جميع الاختبارات والشعارات تخزن في متصفحك دون إرسال إلى أي خادم خارجي.
-                  </p>
-                  <Badge variant="success">متصل - Dexie 4.x</Badge>
-                </CardContent>
-              </Card>
+            <ExamHeaderEditor
+              data={headerData}
+              onChange={updateHeaderData}
+              onOpenSchoolProfile={() => setIsSchoolModalOpen(true)}
+            />
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">حالة اشتراك Supabase</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-xs">
-                  <p className="text-slate-500">
-                    الخطة الحالية: <span className="font-bold text-brand-500">{entitlement.plan}</span>
-                  </p>
-                  <Badge variant={entitlement.isActive ? 'primary' : 'neutral'}>
-                    {entitlement.isActive ? `نشط (${entitlement.daysLeft} يوم)` : 'الخطة المجانية'}
-                  </Badge>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">دعم التثبيت والعمل دون إنترنت</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-xs">
-                  <p className="text-slate-500">
-                    يمكن تثبيت ExamForge كتطبيق مكتبي مستقل على حاسوب المدرسة واستخدامه وطباعة الاختبارات دون أي شبكة.
-                  </p>
-                  <Badge variant="success">PWA & Service Worker مفعل</Badge>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Supabase Code Redemption */}
+            {/* Supabase Subscription Status & Code Redemption */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div className="flex items-center gap-2">
                   <KeyRound className="w-5 h-5 text-amber-500" />
-                  <CardTitle>تفعيل رمز اشتراك مدفوع (Supabase RPC)</CardTitle>
+                  <CardTitle className="text-sm font-bold">تفعيل رمز اشتراك مدفوع (Supabase RPC)</CardTitle>
                 </div>
+                <Badge variant={entitlement.isActive ? 'primary' : 'neutral'}>
+                  الخطة: {entitlement.plan}
+                </Badge>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-xs text-slate-500">
-                  أدخل رمز التفعيل الممنوح من إدارة المنصة لتفعيل الميزات المدفوعة بصورة مشفرة ومؤمنة تماماً:
+                  أدخل رمز التفعيل الممنوح من إدارة المنصة لتفعيل الميزات المدفوعة:
                 </p>
                 <form onSubmit={handleRedeem} className="flex flex-col sm:flex-row items-center gap-3 max-w-md">
                   <input

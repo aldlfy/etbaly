@@ -3,14 +3,27 @@ import type { ExamHeaderData } from '@/features/exam-header/types';
 import { DEFAULT_EXAM_HEADER } from '@/features/exam-header/types';
 import { db } from '@/db';
 
+export interface ExamQuestionItem {
+  id: string;
+  title: string;
+  content: string;
+  marks: number;
+  direction: 'rtl' | 'ltr';
+}
+
 interface ExamState {
   examId: string;
   headerData: ExamHeaderData;
+  questions: ExamQuestionItem[];
   isSaving: boolean;
   lastSavedAt: number | null;
 
   // Actions
   updateHeaderData: (updated: Partial<ExamHeaderData>) => void;
+  addQuestion: (question: Omit<ExamQuestionItem, 'id'> & { id?: string }) => void;
+  removeQuestion: (id: string) => void;
+  updateQuestion: (id: string, updated: Partial<ExamQuestionItem>) => void;
+  clearQuestions: () => void;
   loadDefaultSchoolProfile: () => Promise<void>;
   saveExamToDatabase: () => Promise<void>;
   resetToDefault: () => void;
@@ -19,6 +32,26 @@ interface ExamState {
 export const useExamStore = create<ExamState>((set, get) => ({
   examId: 'exam-' + Date.now(),
   headerData: DEFAULT_EXAM_HEADER,
+  questions: [
+    {
+      id: 'default-q1',
+      title: 'السؤال الأول',
+      content: `أجب عما يأتي:
+<br/>(أ) جد مجموعة حل المعادلة في $\\mathbb{R}$: $\\frac{x^2 - 4}{x - 2} = 5$
+<br/>(ب) احسب الغاية: $\\lim_{x \\to 0} \\frac{\\sin(3x)}{x}$`,
+      marks: 20,
+      direction: 'rtl',
+    },
+    {
+      id: 'default-q2',
+      title: 'السؤال الثاني',
+      content: `تؤثر قوة أفقية $\\vec{F} = 50\\text{ N}$ في جسم كتلته $m = 10\\text{ kg}$ موضوع على سطح أفقي أملس.
+<br/>1- احسب تسارع الجسم $\\vec{a}$ بوحدة $\\text{m/s}^2$ بتطبيق $\\vec{F} = m \\vec{a}$.
+<br/>2- جد الشغل المنجز $W = F \\cdot d$ خلال إزاحة قدرها $d = 5\\text{ m}$.`,
+      marks: 20,
+      direction: 'rtl',
+    },
+  ],
   isSaving: false,
   lastSavedAt: null,
 
@@ -26,6 +59,35 @@ export const useExamStore = create<ExamState>((set, get) => ({
     set((state) => ({
       headerData: { ...state.headerData, ...updated },
     }));
+  },
+
+  addQuestion: (q) => {
+    const newQuestion: ExamQuestionItem = {
+      id: q.id || 'q-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      title: q.title,
+      content: q.content,
+      marks: q.marks || 10,
+      direction: q.direction || 'rtl',
+    };
+    set((state) => ({
+      questions: [...state.questions, newQuestion],
+    }));
+  },
+
+  removeQuestion: (id) => {
+    set((state) => ({
+      questions: state.questions.filter((q) => q.id !== id),
+    }));
+  },
+
+  updateQuestion: (id, updated) => {
+    set((state) => ({
+      questions: state.questions.map((q) => (q.id === id ? { ...q, ...updated } : q)),
+    }));
+  },
+
+  clearQuestions: () => {
+    set({ questions: [] });
   },
 
   loadDefaultSchoolProfile: async () => {
@@ -60,7 +122,7 @@ export const useExamStore = create<ExamState>((set, get) => ({
   },
 
   saveExamToDatabase: async () => {
-    const { examId, headerData } = get();
+    const { examId, headerData, questions } = get();
     set({ isSaving: true });
     try {
       const examRecord = {
@@ -93,7 +155,7 @@ export const useExamStore = create<ExamState>((set, get) => ({
           lineSpacing: 1.5,
           digitStyle: 'eastern' as const,
         },
-        questionIds: [],
+        questionIds: questions.map((q) => q.id),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
