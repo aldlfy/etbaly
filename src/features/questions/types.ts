@@ -54,6 +54,9 @@ export interface QuestionData {
   // Specific to Calculation
   answerSpaceType?: 'blank' | 'dotted_lines' | 'grid_box';
   answerSpaceLines?: number; // e.g. 4 to 12 lines
+
+  // Page layout
+  pageBreakBefore?: boolean;
 }
 
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {

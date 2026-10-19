@@ -23,16 +23,15 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useExamStore } from '@/stores/examStore';
 import { ExamHeaderEditor } from '@/features/exam-header/components/ExamHeaderEditor';
-import { ExamHeaderPreview } from '@/features/exam-header/components/ExamHeaderPreview';
-import { ExamFooter } from '@/features/exam-header/components/ExamFooter';
 import { SchoolProfileModal } from '@/features/exam-header/components/SchoolProfileModal';
 import { QuestionEditor } from '@/features/editor/components/QuestionEditor';
 import { SampleQuestionsViewer } from '@/features/editor/components/SampleQuestionsViewer';
 import { QuestionBuilderStudio } from '@/features/questions/components/QuestionBuilderStudio';
-import { QuestionPaperItem } from '@/features/questions/components/QuestionPaperItem';
 import { computeTotalMarks } from '@/features/questions/utils/numbering';
 import { formatDigits } from '@/lib/arabic-numbers';
 import type { QuestionData } from '@/features/questions/types';
+import { LayoutControls } from '@/features/layout/components/LayoutControls';
+import { MultiPageExamPreview } from '@/features/layout/components/MultiPageExamPreview';
 
 export function App() {
   const { digitStyle } = useSettingsStore();
@@ -40,6 +39,8 @@ export function App() {
   const { 
     headerData, 
     questions,
+    pageSettings,
+    updatePageSettings,
     setQuestions,
     addQuestion,
     updateHeaderData, 
@@ -140,11 +141,11 @@ export function App() {
                   {headerData.subject || 'اختبار جديد'} ({headerData.grade})
                 </h1>
                 <Badge variant="primary" className="text-[11px]">
-                  المرحلة 3: صانع الأسئلة المتعدد وحساب الدرجات
+                  المرحلة 4: محرك التخطيط وتوزيع الصفحات والطباعة
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                7 أنواع أسئلة • ترقيم آلي • إعادة ترتيب وتكرار • رصد حي للدرجات
+                A4/A3/Letter • عمودان/عمود • هوامش وخطوط • ملاءمة ذكية (Fit to 1/2 Pages) • طباعة فورية
                 {lastSavedAt ? ` • تم الحفظ: ${new Date(lastSavedAt).toLocaleTimeString('ar-IQ')}` : ''}
               </p>
             </div>
@@ -265,11 +266,11 @@ export function App() {
           </div>
         )}
 
-        {/* TAB 1: Real WYSIWYG A4 Exam Paper */}
+        {/* TAB 1: Real WYSIWYG Multipage Exam Paper with Layout Controls */}
         {activeTab === 'paper' && (
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center space-y-6">
             {/* Live Marks Counter bar */}
-            <div className="no-print w-full max-w-4xl flex items-center justify-between mb-3 px-2 text-xs">
+            <div className="no-print w-full max-w-5xl flex flex-wrap items-center justify-between gap-3 px-2 text-xs">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-600 dark:text-slate-400">مجموع درجات الورقة:</span>
                 <span className={`font-extrabold text-sm ${isMarksMismatch ? 'text-amber-500' : 'text-emerald-500'}`}>
@@ -281,46 +282,26 @@ export function App() {
                   </span>
                 )}
               </div>
-              <span className="text-slate-400 text-[11px]">معاينة ورقة A4 حقيقية مطابقة للطباعة 100%</span>
+              <span className="text-slate-400 text-[11px]">معاينة حقيقية مطابقة للطباعة بنسبة 100% مع تحكم بالتوزيع والهوامش</span>
             </div>
 
-            {/* A4 Printable Sheet */}
-            <div
-              className="print-area exam-sheet w-full max-w-4xl bg-white text-black rounded-lg shadow-2xl border border-slate-300 p-6 sm:p-10 min-h-[1123px] flex flex-col justify-between"
-              style={{ fontFamily: 'Cairo, sans-serif' }}
-            >
-              {/* Header & Grading Grid */}
-              <div>
-                <ExamHeaderPreview data={headerData} digitStyle={digitStyle} />
+            {/* Layout Controls Bar (no-print) */}
+            <div className="no-print w-full max-w-5xl">
+              <LayoutControls
+                settings={pageSettings}
+                questions={questions}
+                header={headerData}
+                onUpdateSettings={updatePageSettings}
+                onPrint={handlePrint}
+              />
+            </div>
 
-                {/* Exam Questions Body */}
-                <div className="mt-6 space-y-6 text-sm">
-                  {questions.length === 0 ? (
-                    <div className="text-center py-12 text-slate-400 border border-dashed border-slate-300 rounded-lg no-print">
-                      <p className="font-bold mb-1">لا توجد أسئلة مدرجة في الورقة حالياً.</p>
-                      <p className="text-xs">
-                        انتقل إلى تبويب &quot;منشئ الأسئلة&quot; لإضافة أسئلة مقالية، خيارات، فروع، أو مسائل حسابية.
-                      </p>
-                    </div>
-                  ) : (
-                    questions.map((q, idx) => (
-                      <QuestionPaperItem
-                        key={q.id}
-                        question={q}
-                        index={idx}
-                        digitStyle={digitStyle}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Ministerial Footer */}
-              <ExamFooter
-                data={headerData}
-                currentPage={1}
-                totalPages={1}
-                digitStyle={digitStyle}
+            {/* Multipage Printable Sheets */}
+            <div className="print-area w-full max-w-5xl flex justify-center">
+              <MultiPageExamPreview
+                questions={questions}
+                header={headerData}
+                settings={pageSettings}
               />
             </div>
           </div>

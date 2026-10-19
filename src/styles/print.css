@@ -1,8 +1,8 @@
 @media print {
-  /* Set A4 page size with standard Iraqi exam margins */
+  /* Dynamic page size and margins are managed cleanly */
   @page {
-    size: A4 portrait;
-    margin: 12mm 12mm 12mm 12mm;
+    size: auto;
+    margin: 10mm;
   }
 
   /* Reset body and background for printing */
@@ -41,14 +41,29 @@
     border: none !important;
   }
 
-  /* Exam sheet on paper */
-  .exam-sheet {
+  /* Reset scale transform on print */
+  .pages-viewport {
+    transform: none !important;
+    gap: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Exam page on paper */
+  .exam-page {
     box-shadow: none !important;
     border: none !important;
-    padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
+    max-width: 100% !important;
     background: #ffffff !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    box-sizing: border-box !important;
+  }
+
+  .exam-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
 
   /* High contrast borders for tables and headers */
@@ -56,16 +71,27 @@
     border: 2px solid #000000 !important;
     background-color: #ffffff !important;
     padding: 8px !important;
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .mini-header {
+    border-bottom: 2px solid #000000 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .question-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   table {
     border-collapse: collapse !important;
     width: 100% !important;
     border: 1px solid #000000 !important;
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   th, td {

@@ -12,7 +12,8 @@ import {
   ChevronRight, 
   Plus, 
   AlignRight, 
-  AlignLeft 
+  AlignLeft,
+  SeparatorHorizontal
 } from 'lucide-react';
 
 interface QuestionCardProps {
@@ -108,10 +109,30 @@ export function QuestionCard({
               {question.prompt.replace(/<[^>]*>/g, '').substring(0, 40)}...
             </span>
           )}
+
+          {question.pageBreakBefore && (
+            <Badge variant="warning" className="text-[10px]">
+              صفحة جديدة
+            </Badge>
+          )}
         </div>
 
         {/* Actions & Marks */}
         <div className="flex items-center gap-2">
+          {/* Page break toggle */}
+          <button
+            type="button"
+            onClick={() => onUpdate({ pageBreakBefore: !question.pageBreakBefore })}
+            className={`p-1 rounded text-xs transition-colors ${
+              question.pageBreakBefore
+                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 font-bold'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+            title={question.pageBreakBefore ? 'إلغاء فاصل الصفحة' : 'بدء هذا السؤال في صفحة جديدة'}
+          >
+            <SeparatorHorizontal className="w-3.5 h-3.5" />
+          </button>
+
           {/* Marks input */}
           <label className="flex items-center gap-1 text-xs font-bold text-slate-700 dark:text-slate-300">
             <span>الدرجة:</span>

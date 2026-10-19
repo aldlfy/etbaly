@@ -2,17 +2,21 @@ import { create } from 'zustand';
 import type { ExamHeaderData } from '@/features/exam-header/types';
 import { DEFAULT_EXAM_HEADER } from '@/features/exam-header/types';
 import type { QuestionData } from '@/features/questions/types';
+import type { ExamPageSettings } from '@/features/layout/types';
+import { DEFAULT_PAGE_SETTINGS } from '@/features/layout/types';
 import { db } from '@/db';
 
 interface ExamState {
   examId: string;
   headerData: ExamHeaderData;
   questions: QuestionData[];
+  pageSettings: ExamPageSettings;
   isSaving: boolean;
   lastSavedAt: number | null;
 
   // Actions
   updateHeaderData: (updated: Partial<ExamHeaderData>) => void;
+  updatePageSettings: (updated: Partial<ExamPageSettings>) => void;
   setQuestions: (questions: QuestionData[]) => void;
   addQuestion: (question: QuestionData) => void;
   removeQuestion: (id: string) => void;
@@ -75,12 +79,19 @@ export const useExamStore = create<ExamState>((set, get) => ({
       ],
     },
   ],
+  pageSettings: DEFAULT_PAGE_SETTINGS,
   isSaving: false,
   lastSavedAt: null,
 
   updateHeaderData: (updated) => {
     set((state) => ({
       headerData: { ...state.headerData, ...updated },
+    }));
+  },
+
+  updatePageSettings: (updated) => {
+    set((state) => ({
+      pageSettings: { ...state.pageSettings, ...updated },
     }));
   },
 
@@ -166,14 +177,14 @@ export const useExamStore = create<ExamState>((set, get) => ({
           goodLuckMessage: headerData.goodLuckMessage,
         },
         pageSettings: {
-          pageSize: 'A4' as const,
-          orientation: 'portrait' as const,
-          margins: { top: 20, right: 20, bottom: 20, left: 20 },
-          columns: 1 as const,
-          baseFont: 'cairo' as const,
-          fontSizePt: 12,
-          lineSpacing: 1.5,
-          digitStyle: 'eastern' as const,
+          pageSize: get().pageSettings.pageSize,
+          orientation: get().pageSettings.orientation,
+          margins: get().pageSettings.margins,
+          columns: get().pageSettings.columns,
+          baseFont: get().pageSettings.baseFont,
+          fontSizePt: get().pageSettings.fontSizePt,
+          lineSpacing: get().pageSettings.lineSpacing,
+          digitStyle: get().pageSettings.digitStyle,
         },
         questionIds: questions.map((q) => q.id),
         createdAt: Date.now(),
@@ -193,6 +204,7 @@ export const useExamStore = create<ExamState>((set, get) => ({
     set({
       examId: 'exam-' + Date.now(),
       headerData: DEFAULT_EXAM_HEADER,
+      pageSettings: DEFAULT_PAGE_SETTINGS,
       lastSavedAt: null,
     });
   },
