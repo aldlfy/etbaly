@@ -10,6 +10,22 @@ export interface UserEntitlement {
   daysLeft: number;
 }
 
+interface GeneratedCodeItem {
+  code: string;
+  code_prefix: string;
+  plan: string;
+  duration_days: number;
+  note?: string;
+}
+
+export interface AdminStats {
+  total_users: number;
+  total_codes: number;
+  active_codes: number;
+  total_redemptions: number;
+  active_subscriptions: number;
+}
+
 interface AuthState {
   user: User | null;
   role: 'user' | 'admin';
@@ -17,7 +33,17 @@ interface AuthState {
   isLoading: boolean;
   initAuth: () => Promise<void>;
   fetchEntitlement: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signUpWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   redeemCode: (code: string) => Promise<{ success: boolean; message: string }>;
+  adminGenerateCodes: (
+    plan: string,
+    durationDays: number,
+    count: number,
+    note?: string
+  ) => Promise<{ success: boolean; codes?: GeneratedCodeItem[]; error?: string }>;
+  adminRevokeCode: (codePrefix: string, reason: string) => Promise<{ success: boolean; error?: string }>;
+  adminGetStats: () => Promise<{ success: boolean; stats?: AdminStats; error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -98,6 +124,70 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'حدث خطأ أثناء محاولة التفعيل';
       return { success: false, message: msg };
+    }
+  },
+
+  signInWithEmail: async (email, password) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { success: false, error: error.message };
+      set({ user: data.user });
+      await get().fetchEntitlement();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'فشل تسجيل الدخول' };
+    }
+  },
+
+  signUpWithEmail: async (email, password) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) return { success: false, error: error.message };
+      set({ user: data.user });
+      await get().fetchEntitlement();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'فشل إنشاء الحساب' };
+    }
+  },
+
+  adminGenerateCodes: async (plan, durationDays, count, note) => {
+    try {
+      const { data, error } = await supabase.rpc('admin_generate_codes', {
+        p_plan: plan,
+        p_duration_days: durationDays,
+        p_count: count,
+        p_note: note,
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true, codes: data as GeneratedCodeItem[] };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'فشل توليد الرموز' };
+    }
+  },
+
+  adminRevokeCode: async (codePrefix, reason) => {
+    try {
+      const { error } = await supabase.rpc('admin_revoke_code', {
+        p_code_prefix: codePrefix,
+        p_reason: reason,
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'فشل إبطال الرمز' };
+    }
+  },
+
+  adminGetStats: async () => {
+    try {
+      const { data, error } = await supabase.rpc('admin_stats');
+      if (error) return { success: false, error: error.message };
+      return { success: true, stats: data as AdminStats };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'فشل جلب الإحصائيات' };
     }
   },
 

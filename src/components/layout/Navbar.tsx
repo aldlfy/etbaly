@@ -7,7 +7,11 @@ import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 
-export function Navbar() {
+interface NavbarProps {
+  onOpenAccountModal?: () => void;
+}
+
+export function Navbar({ onOpenAccountModal }: NavbarProps = {}) {
   const { t } = useTranslation();
   const { theme, toggleTheme, digitStyle, toggleDigitStyle } = useSettingsStore();
   const { isOnline } = useOfflineStatus();
@@ -62,17 +66,24 @@ export function Navbar() {
 
           {/* Subscription Tier Badge */}
           <div className="hidden md:flex items-center">
-            <Badge
-              variant={entitlement.isActive ? 'primary' : 'neutral'}
-              className="gap-1 font-semibold"
+            <button
+              type="button"
+              onClick={onOpenAccountModal}
+              title="إدارة الحساب والاشتراك"
+              className="cursor-pointer transition-transform hover:scale-105"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>
-                {entitlement.isActive
-                  ? t(`subscription.${entitlement.plan}`)
-                  : t('subscription.free')}
-              </span>
-            </Badge>
+              <Badge
+                variant={entitlement.isActive ? 'primary' : 'neutral'}
+                className="gap-1 font-semibold"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>
+                  {entitlement.isActive
+                    ? t(`subscription.${entitlement.plan}`)
+                    : t('subscription.free')}
+                </span>
+              </Badge>
+            </button>
           </div>
 
           {/* Digit Style Switcher (١٢٣ / 123) */}

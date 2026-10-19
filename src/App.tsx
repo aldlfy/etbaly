@@ -44,6 +44,7 @@ import { BubbleSheetView } from '@/features/bubble-sheet/components/BubbleSheetV
 import { VariantSelector } from '@/features/exam-variants/components/VariantSelector';
 import { generateVariantQuestions } from '@/features/exam-variants/utils/shuffler';
 import { useAutosaveExam } from '@/features/storage/hooks/useAutosaveExam';
+import { AccountSubscriptionModal } from '@/features/subscription/components/AccountSubscriptionModal';
 
 export function App() {
   const { digitStyle } = useSettingsStore();
@@ -71,6 +72,7 @@ export function App() {
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
   const [isExamsModalOpen, setIsExamsModalOpen] = useState(false);
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [questionToSaveToBank, setQuestionToSaveToBank] = useState<QuestionData | null>(null);
   const [saveToast, setSaveToast] = useState(false);
 
@@ -149,7 +151,7 @@ export function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-cairo">
-      <Navbar />
+      <Navbar onOpenAccountModal={() => setIsSubModalOpen(true)} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Top Control Bar / Toolbar */}
@@ -164,11 +166,11 @@ export function App() {
                   {headerData.subject || 'اختبار جديد'} ({headerData.grade})
                 </h1>
                 <Badge variant="primary" className="text-[11px]">
-                  المرحلة 5: التخزين وبنك الأسئلة وسلالم التصحيح
+                  المرحلة 6: الحسابات والاشتراكات وتوليد وإبطال الرموز (Admin)
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                حفظ تلقائي IndexedDB • بنك أسئلة محلي • تصدير JSON • نماذج أ/ب • سلم تصحيح وبابل شيت
+                إدارة الحسابات • تفعيل الرموز XXXX-XXXX-XXXX • لوحة تحكم المشرف • إحصائيات وتصدير CSV
                 {lastSavedAt ? ` • تم الحفظ: ${new Date(lastSavedAt).toLocaleTimeString('ar-IQ')}` : ''}
               </p>
             </div>
@@ -291,6 +293,16 @@ export function App() {
             >
               <School className="w-4 h-4 me-1 text-brand-500" />
               <span>المدرسة</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSubModalOpen(true)}
+              title="إدارة الحساب والاشتراك المدفوع"
+            >
+              <KeyRound className="w-4 h-4 me-1 text-amber-500" />
+              <span>الاشتراك</span>
             </Button>
 
             <Button
@@ -603,6 +615,13 @@ export function App() {
           onSaved={() => alert('تم حفظ السؤال بنجاح في بنك الأسئلة المحلي!')}
         />
       )}
+
+      {/* Account & Subscription Modal */}
+      <AccountSubscriptionModal
+        isOpen={isSubModalOpen}
+        onClose={() => setIsSubModalOpen(false)}
+        digitStyle={digitStyle}
+      />
     </div>
   );
 }
