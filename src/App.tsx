@@ -17,7 +17,8 @@ import {
   Database,
   CheckSquare,
   FileSpreadsheet,
-  Sparkles
+  Sparkles,
+  Layers
 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -47,6 +48,7 @@ import { generateVariantQuestions } from '@/features/exam-variants/utils/shuffle
 import { useAutosaveExam } from '@/features/storage/hooks/useAutosaveExam';
 import { AccountSubscriptionModal } from '@/features/subscription/components/AccountSubscriptionModal';
 import { AIAssistantModal } from '@/features/ai-assistant/components/AIAssistantModal';
+import { ExamTemplatesModal } from '@/features/templates/components/ExamTemplatesModal';
 
 export function App() {
   const { digitStyle } = useSettingsStore();
@@ -76,6 +78,7 @@ export function App() {
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
   const [questionToSaveToBank, setQuestionToSaveToBank] = useState<QuestionData | null>(null);
   const [saveToast, setSaveToast] = useState(false);
 
@@ -268,6 +271,17 @@ export function App() {
             </div>
 
             {/* Quick Actions Buttons */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTemplatesModalOpen(true)}
+              title="نماذج امتحانات وزارية كاملة جاهزة للتحميل المباشر"
+              className="border-teal-300 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/40"
+            >
+              <Layers className="w-4 h-4 me-1 text-teal-600" />
+              <span>نماذج وزارية</span>
+            </Button>
+
             <Button
               variant="outline"
               size="sm"
@@ -645,6 +659,13 @@ export function App() {
         defaultGrade={headerData.grade}
         onInsertQuestion={addQuestion}
         onOpenSubscriptionModal={() => setIsSubModalOpen(true)}
+        digitStyle={digitStyle}
+      />
+
+      {/* Ministerial Exam Templates Modal */}
+      <ExamTemplatesModal
+        isOpen={isTemplatesModalOpen}
+        onClose={() => setIsTemplatesModalOpen(false)}
         digitStyle={digitStyle}
       />
     </div>
