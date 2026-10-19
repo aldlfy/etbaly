@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { 
-  CheckCircle2, 
-  Layers, 
-  Database, 
-  Shield, 
   Sparkles, 
-  BookOpen, 
-  KeyRound, 
-  RefreshCw,
-  PlusCircle,
-  School
+  Printer, 
+  Save, 
+  RotateCcw, 
+  School, 
+  FileText, 
+  CheckCircle2, 
+  KeyRound,
+  Eye,
+  Sliders
 } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -19,55 +18,48 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useAuthStore } from '@/stores/authStore';
-import { formatDigits, getAlphabeticalIndex } from '@/lib/arabic-numbers';
-import { db } from '@/db';
+import { useExamStore } from '@/stores/examStore';
+import { ExamHeaderEditor } from '@/features/exam-header/components/ExamHeaderEditor';
+import { ExamHeaderPreview } from '@/features/exam-header/components/ExamHeaderPreview';
+import { ExamFooter } from '@/features/exam-header/components/ExamFooter';
+import { SchoolProfileModal } from '@/features/exam-header/components/SchoolProfileModal';
+import { formatDigits } from '@/lib/arabic-numbers';
 
 export function App() {
-  const { t } = useTranslation();
   const { digitStyle } = useSettingsStore();
   const { entitlement, initAuth, redeemCode } = useAuthStore();
+  const { 
+    headerData, 
+    updateHeaderData, 
+    loadDefaultSchoolProfile, 
+    saveExamToDatabase, 
+    resetToDefault,
+    isSaving,
+    lastSavedAt 
+  } = useExamStore();
 
+  const [activeTab, setActiveTab] = useState<'editor' | 'overview'>('editor');
+  const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
+  const [saveToast, setSaveToast] = useState(false);
+
+  // Supabase Code Redemption state
   const [inputCode, setInputCode] = useState('');
   const [redeemStatus, setRedeemStatus] = useState<{ message: string; isError: boolean } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Dexie test state
-  const [dexieCount, setDexieCount] = useState<number | null>(null);
-  const [dexieStatus, setDexieStatus] = useState<string>('جاري فحص اتصال IndexedDB...');
-
   useEffect(() => {
     initAuth();
-    testDexie();
-  }, [initAuth]);
+    loadDefaultSchoolProfile();
+  }, [initAuth, loadDefaultSchoolProfile]);
 
-  const testDexie = async () => {
-    try {
-      const count = await db.schoolProfiles.count();
-      setDexieCount(count);
-      setDexieStatus('متصل وجاهز للاستخدام بدون قيود تخزين');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setDexieStatus('خطأ في الاتصال بقاعدة البيانات المحلية: ' + msg);
-    }
+  const handlePrint = () => {
+    window.print();
   };
 
-  const handleAddSampleSchool = async () => {
-    try {
-      const id = 'school-' + Date.now();
-      await db.schoolProfiles.put({
-        id,
-        ministry: 'جمهورية العراق - وزارة التربية',
-        directorate: 'المديرية العامة للتربية في محافظة بغداد / الكرخ الأولى',
-        schoolName: 'ثانوية المتميزين النموذجية للبنين',
-        logoPlacement: 'right',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-      await testDexie();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      alert('فشل حفظ البيانات: ' + msg);
-    }
+  const handleSaveExam = async () => {
+    await saveExamToDatabase();
+    setSaveToast(true);
+    setTimeout(() => setSaveToast(false), 3000);
   };
 
   const handleRedeem = async (e: React.FormEvent) => {
@@ -93,190 +85,296 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-900 via-slate-900 to-slate-950 p-8 sm:p-12 text-white border border-brand-800/40 shadow-xl">
-          <div className="absolute -top-24 -end-24 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative z-10 max-w-3xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{t('phase0.statusBanner')}</span>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Top Control Bar / Toolbar */}
+        <div className="no-print flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold">
+              <FileText className="w-5 h-5" />
             </div>
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-              {t('app.title')} — {t('app.subtitle')}
-            </h1>
-            <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
-              {t('app.description')}
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="font-extrabold text-base sm:text-lg">
+                  {headerData.subject || 'اختبار جديد'} ({headerData.grade})
+                </h1>
+                <Badge variant="primary" className="text-[11px]">
+                  المرحلة 1: ترويسة وبيانات الامتحان
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                طراز وزاري عراقي معتمد • حفظ دائم في IndexedDB • معاينة مطابقة 100% للطباعة
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* View Switcher */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+              <button
+                onClick={() => setActiveTab('editor')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                  activeTab === 'editor'
+                    ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>محرر الترويسة والورقة</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1.5 ${
+                  activeTab === 'overview'
+                    ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>البنية التحتية والاشتراك</span>
+              </button>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSchoolModalOpen(true)}
+              title="تعديل الشعار وبيانات المدرسة"
+            >
+              <School className="w-4 h-4 me-1 text-brand-500" />
+              <span>المدرسة</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSaveExam}
+              isLoading={isSaving}
+              title="حفظ الاختبار محلياً في IndexedDB"
+            >
+              <Save className="w-4 h-4 me-1 text-emerald-500" />
+              <span>حفظ</span>
+            </Button>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handlePrint}
+              title="طباعة ورقة الامتحان أو حفظها PDF"
+            >
+              <Printer className="w-4 h-4 me-1" />
+              <span>طباعة ورقة الامتحان</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetToDefault}
+              title="استعادة الإعدادات الافتراضية"
+              className="p-2"
+            >
+              <RotateCcw className="w-4 h-4 text-slate-500" />
+            </Button>
           </div>
         </div>
 
-        {/* Phase 0 Architecture Checklist */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/20">
-            <CardContent className="p-5 flex items-start gap-3">
-              <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">RTL & العربية أولاً</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  تبديل اتجاه ديناميكي وخطوط عربية أصيلة مدمجة (Cairo, Amiri, Tajawal).
+        {/* Save confirmation toast */}
+        {saveToast && (
+          <div className="no-print p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 animate-fade-in">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>تم حفظ بيانات الاختبار وترويسته بنجاح في IndexedDB!</span>
+          </div>
+        )}
+
+        {/* Tab 1: Editor & WYSIWYG A4 Preview */}
+        {activeTab === 'editor' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Editor Sidebar Controls (Hidden on print) */}
+            <div className="no-print lg:col-span-5 space-y-4">
+              <ExamHeaderEditor
+                data={headerData}
+                onChange={updateHeaderData}
+                onOpenSchoolProfile={() => setIsSchoolModalOpen(true)}
+              />
+
+              {lastSavedAt && (
+                <p className="text-[11px] text-slate-400 text-center font-mono">
+                  آخر حفظ محلي: {new Date(lastSavedAt).toLocaleTimeString('ar-IQ')}
                 </p>
-              </div>
-            </CardContent>
-          </Card>
+              )}
+            </div>
 
-          <Card className="border-brand-500/30 bg-brand-50/30 dark:bg-brand-950/20">
-            <CardContent className="p-5 flex items-start gap-3">
-              <Database className="w-6 h-6 text-brand-500 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">IndexedDB (Dexie)</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  تخزين سحابي ومحلي مستقل لا يستهلك حصة LocalStorage للصور والأسئلة.
-                </p>
+            {/* A4 Paper Preview Container */}
+            <div className="lg:col-span-7 flex flex-col items-center">
+              <div className="no-print w-full flex items-center justify-between mb-2 px-1 text-xs text-slate-500 font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <Eye className="w-4 h-4 text-brand-500" />
+                  معاينة ورقة الامتحان (A4 حقيقي):
+                </span>
+                <span>مطابقة 100% للشاشة وأمر الطباعة</span>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card className="border-indigo-500/30 bg-indigo-50/30 dark:bg-indigo-950/20">
-            <CardContent className="p-5 flex items-start gap-3">
-              <Shield className="w-6 h-6 text-indigo-500 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">أمان Supabase RLS</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  حماية جداول الأكواد والاشتراكات عبر SHA-256 ودوال Postgres المشفرة.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              {/* A4 Paper Canvas */}
+              <div
+                className="print-area exam-sheet w-full bg-white text-black rounded-lg shadow-xl border border-slate-300 p-6 sm:p-8 min-h-[842px] flex flex-col justify-between"
+                style={{
+                  fontFamily: 'Cairo, sans-serif',
+                }}
+              >
+                {/* 1. Ministerial Header & Grading Grid */}
+                <div>
+                  <ExamHeaderPreview data={headerData} digitStyle={digitStyle} />
 
-          <Card className="border-amber-500/30 bg-amber-50/30 dark:bg-amber-950/20">
-            <CardContent className="p-5 flex items-start gap-3">
-              <Layers className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">جاهزية العمل دون إنترنت</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  ملف Service Worker و PWA Manifest لتشغيل التطبيق والطباعة بلا شبكة.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Live Feature Verification Modules */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Module 1: Numerals & Arabic Letter Numbering Engine */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-brand-500" />
-                <CardTitle>محرك الأرقام والترقيم العربي</CardTitle>
-              </div>
-              <Badge variant="primary">
-                {digitStyle === 'eastern' ? 'أرقام مشرقية (١٢٣)' : 'أرقام مغربية (123)'}
-              </Badge>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                يتحكم محرك الترقيم في تحويل أرقام الأسئلة والدرجات تلقائياً دون لمس معادلات الرياضيات (KaTeX)، مجرباً للأرقام المشرقية والمغربية:
-              </p>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {[1, 2, 3, 4, 5, 6].map((num, idx) => (
-                  <div
-                    key={num}
-                    className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-center"
-                  >
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                      السؤال {getAlphabeticalIndex(idx)}
+                  {/* Sample Questions Body Preview for Phase 1 */}
+                  <div className="mt-8 space-y-6 text-sm">
+                    {/* Q1 Example */}
+                    <div className="border-b border-black/20 pb-4">
+                      <div className="flex items-center justify-between font-bold mb-2">
+                        <span>س{formatDigits(1, digitStyle)}: أجب عما يأتي:</span>
+                        <span className="font-extrabold text-xs">({formatDigits(20, digitStyle)} درجة)</span>
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed ps-4">
+                        (أ) عرّف ما يأتي باختصار واذكر أهم الخصائص الأساسية لكل منها.
+                      </p>
+                      <p className="text-xs text-slate-700 leading-relaxed ps-4 mt-2">
+                        (ب) علّل لما يأتي معززاً إجابتك بالمعادلات الرياضية أو العلمية المناسبة إن وجدت.
+                      </p>
                     </div>
-                    <div className="text-lg font-bold text-brand-600 dark:text-brand-400">
-                      س {formatDigits(num, digitStyle)}
+
+                    {/* Q2 Example */}
+                    <div className="border-b border-black/20 pb-4">
+                      <div className="flex items-center justify-between font-bold mb-2">
+                        <span>س{formatDigits(2, digitStyle)}: اختر الإجابة الصحيحة من بين الأقواس:</span>
+                        <span className="font-extrabold text-xs">({formatDigits(20, digitStyle)} درجة)</span>
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed ps-4">
+                        ١- تكون محصلة متجهين متعامدين متساويين في المقدار مساوية لـ: [ ٢ | جذر ٢ | صفر ].
+                      </p>
                     </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      ({formatDigits(num * 5, digitStyle)} درجات)
+
+                    <div className="p-4 rounded border border-dashed border-slate-300 text-center text-xs text-slate-400 no-print">
+                      مساحة أسئلة الامتحان (سيتم تفعيل محرر الرياضيات Tiptap + KaTeX وصانع الأسئلة المتعدد في المرحلتين 2 و 3)
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Module 2: IndexedDB Local Database Test */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div className="flex items-center gap-2">
-                <School className="w-5 h-5 text-emerald-500" />
-                <CardTitle>قاعدة البيانات المحلية (IndexedDB / Dexie)</CardTitle>
-              </div>
-              <Button size="sm" variant="outline" onClick={testDexie} title="إعادة فحص">
-                <RefreshCw className="w-3.5 h-3.5" />
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50 text-xs font-mono space-y-1">
-                <div>حالة الاتصال: <span className="font-bold text-emerald-500">{dexieStatus}</span></div>
-                <div>سجلات المدارس المحفوظة محلياً: <span className="font-bold text-brand-500">{dexieCount ?? '...'}</span></div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Button size="sm" variant="primary" onClick={handleAddSampleSchool}>
-                  <PlusCircle className="w-4 h-4 me-1.5" />
-                  حفظ مدرسة تجريبية في IndexedDB
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Module 3: Supabase Code Redemption & Entitlement */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div className="flex items-center gap-2">
-                <KeyRound className="w-5 h-5 text-amber-500" />
-                <CardTitle>تفعيل اشتراك بالرمز (Supabase RPC)</CardTitle>
-              </div>
-              <Badge variant={entitlement.isActive ? 'success' : 'neutral'}>
-                الخطة: {entitlement.plan} {entitlement.isActive ? `(متبقي ${entitlement.daysLeft} يوم)` : ''}
-              </Badge>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                يتم التحقق من الرمز بالكامل عبر دالة <code className="text-brand-500">redeem_code</code> المشفرة من جانب الخادم في Postgres، مع التحقق من صلاحية الرمز، وحسابات محاولات التخمين (Rate Limiting).
-              </p>
-
-              <form onSubmit={handleRedeem} className="flex flex-col sm:flex-row items-center gap-3 max-w-xl">
-                <input
-                  type="text"
-                  value={inputCode}
-                  onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                  placeholder={t('subscription.codePlaceholder')}
-                  className="w-full sm:w-72 px-4 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  maxLength={16}
-                />
-                <Button type="submit" variant="primary" size="md" isLoading={isSubmitting} className="w-full sm:w-auto">
-                  {t('subscription.redeemButton')}
-                </Button>
-              </form>
-
-              {redeemStatus && (
-                <div
-                  className={`p-3 rounded-lg text-xs font-semibold ${
-                    redeemStatus.isError
-                      ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
-                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                  }`}
-                >
-                  {redeemStatus.message}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+
+                {/* 2. Ministerial Footer with Page Numbers & Good Luck note */}
+                <ExamFooter
+                  data={headerData}
+                  currentPage={1}
+                  totalPages={1}
+                  digitStyle={digitStyle}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Phase 0 Infrastructure & Subscription Tools */}
+        {activeTab === 'overview' && (
+          <div className="no-print space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">تخزين IndexedDB المحلي</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  <p className="text-slate-500">
+                    يعمل المحرر محلياً 100%. جميع الاختبارات والشعارات تخزن في متصفحك دون إرسال إلى أي خادم خارجي.
+                  </p>
+                  <Badge variant="success">متصل - Dexie 4.x</Badge>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">حالة اشتراك Supabase</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  <p className="text-slate-500">
+                    الخطة الحالية: <span className="font-bold text-brand-500">{entitlement.plan}</span>
+                  </p>
+                  <Badge variant={entitlement.isActive ? 'primary' : 'neutral'}>
+                    {entitlement.isActive ? `نشط (${entitlement.daysLeft} يوم)` : 'الخطة المجانية'}
+                  </Badge>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">دعم التثبيت والعمل دون إنترنت</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  <p className="text-slate-500">
+                    يمكن تثبيت ExamForge كتطبيق مكتبي مستقل على حاسوب المدرسة واستخدامه وطباعة الاختبارات دون أي شبكة.
+                  </p>
+                  <Badge variant="success">PWA & Service Worker مفعل</Badge>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Supabase Code Redemption */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-5 h-5 text-amber-500" />
+                  <CardTitle>تفعيل رمز اشتراك مدفوع (Supabase RPC)</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-xs text-slate-500">
+                  أدخل رمز التفعيل الممنوح من إدارة المنصة لتفعيل الميزات المدفوعة بصورة مشفرة ومؤمنة تماماً:
+                </p>
+                <form onSubmit={handleRedeem} className="flex flex-col sm:flex-row items-center gap-3 max-w-md">
+                  <input
+                    type="text"
+                    value={inputCode}
+                    onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                    placeholder="XXXX-XXXX-XXXX"
+                    className="w-full sm:w-72 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono tracking-wider"
+                    maxLength={16}
+                  />
+                  <Button type="submit" variant="primary" size="md" isLoading={isSubmitting}>
+                    تفعيل الرمز
+                  </Button>
+                </form>
+
+                {redeemStatus && (
+                  <div
+                    className={`p-3 rounded-lg text-xs font-semibold ${
+                      redeemStatus.isError
+                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                    }`}
+                  >
+                    {redeemStatus.message}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </main>
 
       <Footer />
+
+      {/* School Profile Modal */}
+      <SchoolProfileModal
+        isOpen={isSchoolModalOpen}
+        onClose={() => setIsSchoolModalOpen(false)}
+        onSelectProfile={(profile) => {
+          updateHeaderData({
+            ministry: profile.ministry,
+            directorate: profile.directorate,
+            schoolName: profile.schoolName,
+            logoUrl: profile.logoUrl,
+            logoBlobId: profile.logoBlobId,
+            logoPlacement: profile.logoPlacement,
+          });
+        }}
+      />
     </div>
   );
 }

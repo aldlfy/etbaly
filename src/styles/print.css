@@ -1,0 +1,75 @@
+@media print {
+  /* Set A4 page size with standard Iraqi exam margins */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 12mm 12mm 12mm;
+  }
+
+  /* Reset body and background for printing */
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide everything marked as no-print */
+  .no-print,
+  nav,
+  header,
+  footer.no-print,
+  button,
+  .btn,
+  input[type="file"] {
+    display: none !important;
+  }
+
+  /* Force print containers to be visible and unconstrained */
+  .print-area {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Exam sheet on paper */
+  .exam-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    background: #ffffff !important;
+  }
+
+  /* High contrast borders for tables and headers */
+  .exam-header-container {
+    border: 2px solid #000000 !important;
+    background-color: #ffffff !important;
+    padding: 8px !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    border: 1px solid #000000 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  th, td {
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
+  }
+}
